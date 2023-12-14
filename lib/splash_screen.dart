@@ -2,8 +2,40 @@ import 'main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class SplashScreen extends StatelessWidget {
-  const SplashScreen({Key? key});
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({Key? key}) : super(key: key);
+
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 2), () {
+      checkAuthentication();
+    });
+  }
+
+  void checkAuthentication() {
+    final isAuthenticated = BlocProvider.of<AuthenticationCubit>(context).state;
+    if (isAuthenticated.isNotEmpty) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MyHomePage(),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AuthenticationScreen(),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,35 +43,8 @@ class SplashScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Сплеш-скрин'),
       ),
-      body: Center(
-        child: BlocBuilder<AuthenticationCubit, String>(
-          builder: (context, isAuthenticated) {
-            return ElevatedButton(
-              onPressed: () {
-                if (isAuthenticated.isNotEmpty) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MyHomePage(),
-                      fullscreenDialog: true,
-                    ),
-                  );
-                } else {
-                  // Navigate to authentication screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AuthenticationScreen(),
-                    ),
-                  );
-                }
-              },
-              child: Text(
-                isAuthenticated.isNotEmpty ? 'Вернуться на главную' : 'Авторизоваться',
-              ),
-            );
-          },
-        ),
+      body: const Center(
+        child: CircularProgressIndicator(),
       ),
     );
   }
