@@ -154,7 +154,7 @@ class MyApp extends StatelessWidget {
             create: (context) => InternetCubit()..checkInternetConnection()),
       ],
       child: MaterialApp(
-        title: 'Authentication & Internet Demo',
+        title: 'ПУПУПУ',
         theme: ThemeData(
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -187,7 +187,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cat Images'),
+        title: const Text('Картинки котиков'),
         actions: [
           IconButton(
             icon: Icon(Icons.logout),
@@ -288,7 +288,7 @@ class GeneratorPage extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                     ),
-                    child: const Text('Next'),
+                    child: const Text('Послѣдьнѩі'),
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
@@ -302,7 +302,7 @@ class GeneratorPage extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                     ),
-                    child: const Text('Like'),
+                    child: const Text('Любо'),
                   ),
                 ],
               ),
@@ -322,7 +322,7 @@ class FavoritesPage extends StatelessWidget {
     return BlocBuilder<FavoriteCubit, List<CatImage>>(
       builder: (context, favorites) {
         if (favorites.isEmpty) {
-          return const Center(child: Text('No favorites yet.'));
+          return const Center(child: Text('Нет избранных'));
         }
 
         return ListView.builder(
