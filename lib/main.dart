@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:namer_app/splash_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
@@ -46,19 +47,29 @@ class CatCubit extends Cubit<List<CatImage>> {
   }
 }
 
-class AuthenticationCubit extends Cubit<bool> {
-  AuthenticationCubit() : super(false);
+class AuthenticationCubit extends Cubit<String> {
+  AuthenticationCubit() : super('');
+
+  Future<void> authenticate(String login, String password) async {
+    if (login.isNotEmpty && password.isNotEmpty) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('login', login);
+      emit(login);
+    } else {
+      emit('');
+    }
+  }
 
   Future<void> checkAuthenticationStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
-    emit(isAuthenticated);
+    String authenticatedUser = prefs.getString('login') ?? '';
+    emit(authenticatedUser);
   }
 
-  Future<void> authenticate() async {
+  Future<void> signOut() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isAuthenticated', true);
-    emit(true);
+    await prefs.remove('login');
+    emit('');
   }
 }
 
@@ -127,7 +138,7 @@ class FavoriteCubit extends Cubit<List<CatImage>> {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -148,12 +159,12 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-        home: BlocBuilder<AuthenticationCubit, bool>(
+        home: BlocBuilder<AuthenticationCubit, String>(
           builder: (context, isAuthenticated) {
-            if (isAuthenticated) {
+            if (isAuthenticated.isNotEmpty) {
               return const MyHomePage();
             } else {
-              return const AuthenticationScreen();
+              return const SplashScreen();
             }
           },
         ),
@@ -163,7 +174,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  const MyHomePage({Key? key});
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -177,6 +188,18 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cat Images'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: () {
+              context.read<AuthenticationCubit>().signOut();
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const AuthenticationScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: _selectedIndex == 0 ? const GeneratorPage() : const FavoritesPage(),
       bottomNavigationBar: BottomNavigationBar(
@@ -201,80 +224,90 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-// ... (ваш предыдущий код)
 
 class GeneratorPage extends StatelessWidget {
   const GeneratorPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<CatCubit, List<CatImage>>(
-      builder: (context, catImages) {
-        if (catImages.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        var catImage = catImages.first;
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          FullScreenImagePage(imageUrl: catImage.url),
-                    ),
-                  );
-                },
-                child: Hero(
-                  tag: catImage.url,
-                  child: SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: Card(
-                      elevation: 5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15.0),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(15.0),
-                        child: Image.network(
-                          catImage.url,
-                          fit: BoxFit.cover,
+    return BlocBuilder<AuthenticationCubit, String>(
+      builder: (context, isAuthenticated) {
+        return BlocBuilder<CatCubit, List<CatImage>>(
+          builder: (context, catImages) {
+            if (catImages.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            var catImage = catImages.first;
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              FullScreenImagePage(imageUrl: catImage.url),
+                        ),
+                      );
+                    },
+                    child: Hero(
+                      tag: catImage.url,
+                      child: SizedBox(
+                        width: 200,
+                        height: 200,
+                        child: Card(
+                          elevation: 5,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(15.0),
+                            child: Image.network(
+                              catImage.url,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  Text(
+                    isAuthenticated.isNotEmpty
+                        ? 'Вот котики для тебя, $isAuthenticated'
+                        : 'Необходима авторизация',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<CatCubit>().fetchCatImages();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                    ),
+                    child: const Text('Next'),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      final favoriteCubit = context.read<FavoriteCubit>();
+                      final List<CatImage> updatedFavorites =
+                      List.from(favoriteCubit.state);
+                      updatedFavorites.add(catImage);
+                      favoriteCubit.updateFavorites(updatedFavorites);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    child: const Text('Like'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  context.read<CatCubit>().fetchCatImages();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                ),
-                child: const Text('Next'),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  final favoriteCubit = context.read<FavoriteCubit>();
-                  final List<CatImage> updatedFavorites =
-                  List.from(favoriteCubit.state);
-                  updatedFavorites.add(catImage);
-                  favoriteCubit.updateFavorites(updatedFavorites);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
-                child: const Text('Like'),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -358,20 +391,127 @@ class AuthenticationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TextEditingController _loginController = TextEditingController();
+    final TextEditingController _passwordController = TextEditingController();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Authentication'),
+        title: const Text('Авторизация'),
       ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            context.read<AuthenticationCubit>().authenticate();
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MyHomePage()),
-            );
-          },
-          child: const Text('Authenticate'),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _loginController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Логин',
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _passwordController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Пароль',
+                ),
+                obscureText: true,
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final login = _loginController.text;
+                final password = _passwordController.text;
+
+                if (login.isNotEmpty && password.isNotEmpty) {
+                  context.read<AuthenticationCubit>().authenticate(
+                    login,
+                    password,
+                  );
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MyHomePage()),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Пожалуйста, заполните поля Логин и Пароль'),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Авторизоваться'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class LoginForm extends StatefulWidget {
+  @override
+  _LoginFormState createState() => _LoginFormState();
+}
+
+class _LoginFormState extends State<LoginForm> {
+  final TextEditingController _loginController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _loginController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Login'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _loginController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Login',
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _passwordController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Password',
+                ),
+                obscureText: true,
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                context.read<AuthenticationCubit>().authenticate(
+                  _loginController.text,
+                  _passwordController.text,
+                );
+              },
+              child: const Text('Authenticate'),
+            ),
+          ],
         ),
       ),
     );

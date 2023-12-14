@@ -2,32 +2,41 @@ import 'main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-
 class SplashScreen extends StatelessWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({Key? key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Authentication'),
+        title: const Text('Сплеш-скрин'),
       ),
       body: Center(
-        child: BlocBuilder<AuthenticationCubit, bool>(
+        child: BlocBuilder<AuthenticationCubit, String>(
           builder: (context, isAuthenticated) {
             return ElevatedButton(
               onPressed: () {
-                if (isAuthenticated) {
+                if (isAuthenticated.isNotEmpty) {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => const MyHomePage()),
+                    MaterialPageRoute(
+                      builder: (context) => const MyHomePage(),
+                      fullscreenDialog: true,
+                    ),
                   );
                 } else {
-                  context.read<AuthenticationCubit>().authenticate();
+                  // Navigate to authentication screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AuthenticationScreen(),
+                    ),
+                  );
                 }
               },
               child: Text(
-                  isAuthenticated ? 'Вернуться на главную' : 'Authenticate'),
+                isAuthenticated.isNotEmpty ? 'Вернуться на главную' : 'Авторизоваться',
+              ),
             );
           },
         ),
